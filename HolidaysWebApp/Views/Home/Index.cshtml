@@ -6,44 +6,116 @@
 <div>
     <h3 class="display-4">Public Holidays Finder</h3>
     <center>
-        <form method="get" action="/">
+        <form id="holidayForm">
             <table>
                 <tr>
                     <td>Country Code: </td>
                     <td><input type="text" id="txtCountryCode" name="countryCode" /></td>
                     <td>Year: </td>
                     <td><input type="text" id="txtYear" name="year" /></td>
-                    <td><input type="submit" value="Submit" class="btn btn-primary" /></td>
+                    <td><input type="submit" value="Submit" /></td>
                 </tr>
             </table>
             <hr />
         </form>
-    </center>
 
-    @if (Model != null && Model.Count > 0)
-    {
-        <table class="table table-bordered table-striped table-sm">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Name</th>
-                    <th>Local Name</th>
-                    <th>Country Code</th>
-                    <th>Global</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
+        <div id="loadingIndicator" style="display: none;">
+            Loading...
+        </div>
+
+        <div id="errorMessage" style="display: none; color: red; margin: 10px;">
+        </div>
+
+        <div id="resultsTable" style="display: none;">
+            <table class="table table-bordered table-striped table-sm">
+                <thead>
                     <tr>
-                        <td>@item.Date?.ToShortDateString()</td>
-                        <td>@item.Name</td>
-                        <td>@item.LocalName</td>
-                        <td>@item.CountryCode</td>
-                        <td>@item.Global</td>
+                        <th>Date</th>
+                        <th>Name</th>
+                        <th>Local Name</th>
+                        <th>Country Code</th>
+                        <th>Global</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    }
+                </thead>
+                <tbody id="holidaysTableBody">
+                </tbody>
+            </table>
+        </div>
+    </center>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#holidayForm').on('submit', function (e) {
+                e.preventDefault(); // prevent form submission
+
+                const countryCode = $('#txtCountryCode').val().trim();
+                const year = $('#txtYear').val().trim();
+
+                // validating inputs
+                if (!countryCode || !year) {
+                    showError('Please enter both country code and year.');
+                    return;
+                }
+
+                // Show loading indicator
+                $('#loadingIndicator').show();
+                $('#resultsTable').hide();
+                $('#errorMessage').hide();
+
+                // Make AJAX call
+                $.ajax({
+                    url: '/Home/GetHolidays',
+                    type: 'GET',
+                    data: {
+                        countryCode: countryCode,
+                        year: year
+                    },
+                    success: function (response) {
+                        if (response && response.length > 0) {
+                            displayHolidays(response);
+                        } else {
+                            showError('No holidays found for the specified country and year.');
+                        }
+                    },
+                    // handling errors
+                    error: function (xhr, status, error) {
+                        showError('Error fetching holidays. Please try again.');
+                        console.error('Error:', error);
+                    },
+                    // hide loading component when AJAX fetch is done
+                    complete: function () {
+                        $('#loadingIndicator').hide();
+                    }
+                });
+            });
+
+            // inserting HTML body with holiday rows 
+            function displayHolidays(holidays) {
+                const tbody = $('#holidaysTableBody');
+                tbody.empty();
+
+                holidays.forEach(function (holiday) {
+                    const row = $('<tr>');
+                    row.append($('<td>').text(new Date(holiday.date).toLocaleDateString()));
+                    row.append($('<td>').text(holiday.name));
+                    row.append($('<td>').text(holiday.localName));
+                    row.append($('<td>').text(holiday.countryCode));
+                    row.append($('<td>').text(holiday.global ? 'Yes' : 'No'));
+                    tbody.append(row);
+                });
+
+                $('#resultsTable').show();
+            }
+
+            // show error message for invalid inputs
+            function showError(message) {
+                $('#errorMessage')
+                    .text(message)
+                    .show();
+                $('#resultsTable').hide();
+            }
+        });
+    </script>
+}

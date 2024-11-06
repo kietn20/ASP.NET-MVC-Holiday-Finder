@@ -3,38 +3,49 @@ using HolidaysWebApp.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
-namespace HolidaysWebApp.Controllers
+public class HomeController : Controller
 {
-    public class HomeController : Controller
+    private readonly IHolidaysApiService _holidaysApiService;
+
+    public HomeController(IHolidaysApiService holidaysApiService)
     {
-        private readonly IHolidaysApiService _holidaysApiService;
+        _holidaysApiService = holidaysApiService;
+    }
 
-        public HomeController(IHolidaysApiService holidaysApiService)
+
+    [HttpGet]
+    public async Task<IActionResult> GetHolidays(string countryCode, int year)
+    {
+        try
         {
-            _holidaysApiService = holidaysApiService;
-        }
-
-        public async Task<IActionResult> Index(string countryCode, int year)
-        {
-            List<HolidayModel> holidays = new List<HolidayModel>();
-
-            if (!string.IsNullOrEmpty(countryCode) && year > 0)
+            if (string.IsNullOrEmpty(countryCode) || year <= 0)
             {
-                holidays = await _holidaysApiService.GetHolidays(countryCode, year);
+                return BadRequest("Invalid input parameters");
             }
 
-            return View(holidays);
+            // Call the GetHolidays method of the IHolidaysApiService interface
+            var holidays = await _holidaysApiService.GetHolidays(countryCode.ToUpper(), year);
+            return Json(holidays);
         }
-
-        public IActionResult Privacy()
+        catch (Exception ex) // catch any exceptions thrown by the GetHolidays method
         {
-            return View();
+            return StatusCode(500, "An unexpected error occurred");
         }
+    }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+    public IActionResult Index()
+    {
+        return View();
+    }
+
+    public IActionResult Privacy()
+    {
+        return View();
+    }
+
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 }
